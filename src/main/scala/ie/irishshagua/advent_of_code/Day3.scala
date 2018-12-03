@@ -40,12 +40,12 @@ object Day3 extends App {
     } else None
   }
 
-  // Ridiculously inefficient... 🤢🤢🤢🤢🤢🤢🤢🤢🤢🤢🤢🤢:-/
   def areaFromClaim(claim: Claim): List[(Int, Int)] = (for {
       x <- claim.x until (claim.x + claim.dimensions.width)
       y <- claim.y until (claim.y + claim.dimensions.height)
     } yield (x, y)).toList.distinct
 
+  // Ridiculously inefficient... 🤢🤢🤢🤢🤢🤢🤢🤢🤢🤢🤢🤢:-/
   def uniqueClaim(claims: List[Claim]): Option[Claim] = claims.find { claim =>
       !claims.filterNot(_ == claim).exists { intersects(claim, _) }
     }
