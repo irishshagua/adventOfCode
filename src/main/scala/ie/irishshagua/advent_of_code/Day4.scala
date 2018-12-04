@@ -3,8 +3,6 @@ package ie.irishshagua.advent_of_code
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime}
 
-import ie.irishshagua.advent_of_code.Day4.reports
-
 import scala.annotation.tailrec
 import scala.io.Source
 
@@ -45,20 +43,25 @@ object Day4 extends App {
     )
 
     val testReports = generateReports(testData.sorted.flatMap(toShiftAction))
-    val result = calcResult(testReports)
-    result.contains(240)
+    val testBreakdown = reportsPerGuard(testReports)
+    val result1 = calcPart1Result(testBreakdown)
+    val result2 = calcPart2Result(testBreakdown)
+
+    result1.contains(240) && result2.contains(4455)
   })
 
   val input = Source.fromResource("day4/input").getLines().toList.sorted.flatMap(toShiftAction)
   val reports = generateReports(input)
-  println(s"Result: ${calcResult(reports)}")
+  val breakdown = reportsPerGuard(reports)
+  println(s"Day 4 Part 1 Result: ${calcPart1Result(breakdown)}")
+  println(s"Day 4 Part 2 Result: ${calcPart2Result(breakdown)}")
+
 
   def toShiftAction(report: String): Option[ShiftActions] = report match {
-    case ShiftStartPattern(dateTime, guardId) => {
+    case ShiftStartPattern(dateTime, guardId) =>
       val dt = LocalDateTime.parse(dateTime, DateTimeFormat)
       val date = if (dt.getHour == 23) dt.toLocalDate.plusDays(1) else dt.toLocalDate
       Some(GuardStarts(date, guardId.toInt))
-    }
     case SleepStartPattern(time) => Some(FallsAsleep(time.toInt))
     case SleepEndPattern(time) => Some(WakesUp(time.toInt))
     case _ => None
@@ -74,18 +77,39 @@ object Day4 extends App {
     }
   }
 
-  def sleepiestGuard(reports: List[GuardSleepReport]): Option[Int] =
-    reports.groupBy(_.id).mapValues(l => l.map(_.snoozeyTime.size).sum).toSeq.sortBy(_._2).reverse.headOption.map(_._1)
+  def reportsPerGuard(reports: List[GuardSleepReport]): Map[Int, List[GuardSleepReport]] =
+    reports.groupBy(_.id)
 
-  def mostFrequentSleepingMinute(reports: List[GuardSleepReport]): Option[Int] = {
+  def sleepiestGuard(reports: Map[Int, List[GuardSleepReport]]): Option[Int] =
+    reports.mapValues(l => l.map(_.snoozeyTime.size).sum).toSeq.sortBy(_._2).reverse.headOption.map(_._1)
+
+  def mostFrequentSleepingMinute(reports: List[GuardSleepReport]): Option[(Int, Int)] = {
     val grouped = reports.flatMap(_.snoozeyTime).groupBy(identity)
     if (grouped.nonEmpty) {
-      Some(grouped.maxBy(_._2.size)._1)
+      Some(
+        grouped.maxBy(_._2.size) match {
+          case (min, lsMins) => (min, lsMins.size)
+        }
+      )
     } else None
   }
 
-  def calcResult(reports: List[GuardSleepReport]): Option[Int] = for {
-      guardId <- sleepiestGuard(reports)
-      sneekyTime <- mostFrequentSleepingMinute(reports.filter(_.id == guardId))
-    } yield guardId * sneekyTime
+  def calcPart1Result(breakdown: Map[Int, List[GuardSleepReport]]): Option[Int] = for {
+      guardId <- sleepiestGuard(breakdown)
+      reports <- breakdown.get(guardId)
+      (sleepingMinute, _) <- mostFrequentSleepingMinute(reports)
+    } yield guardId * sleepingMinute
+
+  def calcPart2Result(breakdown: Map[Int, List[GuardSleepReport]]): Option[Int] = breakdown.map {
+    case (guardId, gaurdsReports) => (guardId, mostFrequentSleepingMinute(gaurdsReports))
+  }
+    .collect { case (k, Some(v)) => (k, v) }
+    .toSeq
+    .sortBy(_._2._2)
+    .reverse
+    .map { i => (i._1, i._2._1) }
+    .headOption
+    .map { case (guardId, sleepingMin) =>
+      guardId * sleepingMin
+    }
 }
