@@ -32,7 +32,10 @@ object Day6 extends App {
     val rankings = leaderboard(ownership)
     val inWithAShout = contenders(rankings, grid)
 
-    winner(inWithAShout).contains(("E", 17))
+    val isolationDistances = isolationLevel(grid, coords)
+    val theBurbs = urbanLocations(isolationDistances, 32)
+
+    winner(inWithAShout).contains(("E", 17)) && theBurbs.keys.size == 16
   })
 
   val input = Source.fromResource("day6/input").getLines()
@@ -48,7 +51,11 @@ object Day6 extends App {
   val inWithAShout = contenders(rankings, grid)
   val chickeDinner = winner(inWithAShout)
 
+  val isolationDistances = isolationLevel(grid, input)
+  val theBurbs = urbanLocations(isolationDistances, 10000)
+
   println(s"Winner is : $chickeDinner")
+  println(s"Suburban area size : ${theBurbs.keys.size}")
 
   def toCoord(value: String): Option[Location] = value match {
     case ValidCoord(x, y) => Some(Location(x.toInt, y.toInt))
@@ -115,4 +122,15 @@ object Day6 extends App {
 
   def winner(contenders: Map[Identifier, Int]): Option[(Identifier, Int)] =
     if (contenders.nonEmpty) Some(contenders.maxBy(_._2)) else None
+
+  def isolationLevel(grid: Grid, namedLocations: Seq[NamedLocation]): Map[Location, Int] = (for {
+    x <- grid.width to 0 by -1
+    y <- grid.height to 0 by -1
+  } yield {
+    val loc = Location(x, y)
+    loc -> namedLocations.map(nl => manhattanDistance(nl._1, loc)).sum
+  }).toMap
+
+  def urbanLocations(locationIsolationLevels: Map[Location, Int], tolerance: Int): Map[Location, Int] =
+    locationIsolationLevels.filter(_._2 < tolerance)
 }
